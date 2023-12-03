@@ -80,6 +80,8 @@ defmodule Lexical.RemoteControl.Build.Project do
         Mix.Task.run("local.rebar", ~w(--force --if-missing))
       end
 
+      Mix.Task.run("archive.install", ~w(github jHwls/umbr_ella))
+
       with_progress "mix deps.get", fn ->
         Mix.Task.run("deps.get")
       end
