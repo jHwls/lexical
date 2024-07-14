@@ -2,20 +2,18 @@ defmodule Lexical.Server.CodeIntelligence.Completion do
   alias Future.Code, as: Code
   alias Lexical.Ast.Analysis
   alias Lexical.Ast.Env
-  alias Lexical.Completion.Translatable
   alias Lexical.Document.Position
   alias Lexical.Project
   alias Lexical.Protocol.Types.Completion
   alias Lexical.Protocol.Types.InsertTextFormat
   alias Lexical.RemoteControl
   alias Lexical.RemoteControl.Completion.Candidate
-  alias Lexical.RemoteControl.Modules.Predicate
   alias Lexical.Server.CodeIntelligence.Completion.Builder
+  alias Lexical.Server.CodeIntelligence.Completion.Translatable
   alias Lexical.Server.Configuration
   alias Lexical.Server.Project.Intelligence
   alias Mix.Tasks.Namespace
 
-  use Predicate.Syntax
   require InsertTextFormat
   require Logger
 
@@ -102,7 +100,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion do
 
       {:local_or_var, name} ->
         local_length = length(name)
-        surround_begin = max(1, env.position.character - local_length - 1)
+        surround_begin = max(1, env.position.character - local_length)
 
         local_length > 1 or has_surround_context?(env.prefix, 1, surround_begin)
 
@@ -239,7 +237,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion do
           RemoteControl.Api.modules_with_prefix(
             env.project,
             full_name,
-            predicate(&macro_exported?(&1, :__using__, 1))
+            {Kernel, :macro_exported?, [:__using__, 1]}
           )
 
         not Enum.empty?(with_prefix)
@@ -259,7 +257,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion do
           RemoteControl.Api.modules_with_prefix(
             env.project,
             full_name,
-            predicate(&function_exported?(&1, :behaviour_info, 1))
+            {Kernel, :function_exported?, [:behaviour_info, 1]}
           )
 
         not Enum.empty?(with_prefix)

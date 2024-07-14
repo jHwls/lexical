@@ -7,8 +7,10 @@ defmodule Lexical.Ast.Analysis do
 
   alias Lexical.Ast.Analysis.Alias
   alias Lexical.Ast.Analysis.Import
+  alias Lexical.Ast.Analysis.Require
   alias Lexical.Ast.Analysis.Scope
   alias Lexical.Ast.Analysis.State
+  alias Lexical.Ast.Analysis.Use
   alias Lexical.Document
   alias Lexical.Document.Position
   alias Lexical.Document.Range
@@ -363,6 +365,33 @@ defmodule Lexical.Ast.Analysis do
   # wholesale import import MyModule
   defp analyze_node({:import, _meta, [{:__aliases__, _aliases, module}]} = quoted, state) do
     State.push_import(state, Import.new(state.document, quoted, module))
+  end
+
+  # require MyModule, as: Alias
+  defp analyze_node({:require, _meta, [{:__aliases__, _, module}, options]} = quoted, state) do
+    case fetch_alias_as(options) do
+      {:ok, as_module} ->
+        State.push_require(state, Require.new(state.document, quoted, module, as_module))
+
+      :error ->
+        state
+    end
+  end
+
+  # require MyModule
+  defp analyze_node(
+         {:require, _meta, [{:__aliases__, _, module}]} = quoted,
+         state
+       ) do
+    State.push_require(state, Require.new(state.document, quoted, module))
+  end
+
+  # use MyModule
+  defp analyze_node(
+         {:use, _meta, [{:__aliases__, _, module} | opts]} = use,
+         state
+       ) do
+    State.push_use(state, Use.new(state.document, use, module, opts))
   end
 
   # stab clauses: ->

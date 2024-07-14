@@ -1,9 +1,9 @@
 defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Macro do
   alias Lexical.Ast.Env
-  alias Lexical.Completion.SortScope
-  alias Lexical.Completion.Translatable
   alias Lexical.Document
   alias Lexical.RemoteControl.Completion.Candidate
+  alias Lexical.Server.CodeIntelligence.Completion.SortScope
+  alias Lexical.Server.CodeIntelligence.Completion.Translatable
   alias Lexical.Server.CodeIntelligence.Completion.Translations
   alias Lexical.Server.CodeIntelligence.Completion.Translations.Callable
   alias Lexical.Server.CodeIntelligence.Completion.Translations.Struct
@@ -492,7 +492,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Macro do
       label: stub_label,
       filter_text: "test"
     )
-    |> builder.set_sort_scope(SortScope.global())
+    |> builder.set_sort_scope(SortScope.remote(false, 2))
   end
 
   def translate(%Candidate.Macro{name: "test", arity: 2}, builder, env) do
@@ -511,7 +511,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Macro do
       label: plain_label,
       filter_text: "test"
     )
-    |> builder.set_sort_scope(SortScope.global())
+    |> builder.set_sort_scope(SortScope.remote(false, 0))
   end
 
   def translate(%Candidate.Macro{name: "test", arity: 3}, builder, env) do
@@ -530,7 +530,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Macro do
       label: context_label,
       filter_text: "test"
     )
-    |> builder.set_sort_scope(SortScope.global())
+    |> builder.set_sort_scope(SortScope.remote(false, 1))
   end
 
   def translate(%Candidate.Macro{name: "describe"}, builder, env) do

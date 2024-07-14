@@ -34,7 +34,8 @@ defmodule Lexical.RemoteControl.CodeIntelligence.Entity do
 
     with :ok <- check_commented(analysis, position),
          {:ok, surround_context} <- Ast.surround_context(analysis, position),
-         {:ok, resolved, {begin_pos, end_pos}} <- resolve(surround_context, analysis, position) do
+         {:ok, resolved, {begin_pos, end_pos}} <-
+           resolve(surround_context, analysis, position) do
       Logger.info("Resolved entity: #{inspect(resolved)}")
       {:ok, resolved, to_range(analysis.document, begin_pos, end_pos)}
     else
@@ -108,10 +109,11 @@ defmodule Lexical.RemoteControl.CodeIntelligence.Entity do
   defp resolve({:local_arity, chars}, node_range, analysis, position) do
     current_module = current_module(analysis, position)
 
-    case Ast.zipper_at(analysis.document, position) do
-      {:ok, %Zipper{node: {:/, _, [_, {:__block__, _, [arity]}]}}} ->
-        {:ok, {:call, current_module, List.to_atom(chars), arity}, node_range}
-
+    with {:ok, %Zipper{node: {:/, _, [_, {:__block__, _, [arity]}]}} = zipper} <-
+           Ast.zipper_at(analysis.document, position),
+         true <- inside_capture?(zipper) do
+      {:ok, {:call, current_module, List.to_atom(chars), arity}, node_range}
+    else
       _ ->
         {:error, :not_found}
     end
@@ -199,7 +201,10 @@ defmodule Lexical.RemoteControl.CodeIntelligence.Entity do
   defp resolve_module(charlist, {{line, column}, {line, _}}, analysis, %Position{} = position) do
     module_before_cursor = module_before_position(charlist, column, position)
 
-    maybe_prepended = maybe_prepend_phoenix_scope_module(module_before_cursor, analysis, position)
+    maybe_prepended =
+      module_before_cursor
+      |> maybe_prepend_phoenix_scope_module(analysis, position)
+      |> maybe_prepend_ecto_schema(analysis, position)
 
     with {:ok, module} <- expand_alias(maybe_prepended, analysis, position) do
       end_column = column + String.length(module_before_cursor)
@@ -213,6 +218,36 @@ defmodule Lexical.RemoteControl.CodeIntelligence.Entity do
   defp resolve_module(charlist, node_range, analysis, %Position{} = position) do
     with {:ok, module} <- expand_alias(charlist, analysis, position) do
       {:ok, {:module, module}, node_range}
+    end
+  end
+
+  defp maybe_prepend_ecto_schema(module_string, %Analysis{} = analysis, %Position{} = position) do
+    with true <- Ecto.Schema in RemoteControl.Analyzer.uses_at(analysis, position),
+         true <- in_inline_embed?(analysis, position),
+         {:ok, parent_module} <- RemoteControl.Analyzer.current_module(analysis, position) do
+      parent_module
+      |> Module.concat(module_string)
+      |> Formats.module()
+    else
+      _ ->
+        module_string
+    end
+  end
+
+  @embeds [:embeds_one, :embeds_many]
+  defp in_inline_embed?(%Analysis{} = analysis, %Position{} = position) do
+    case Ast.path_at(analysis, position) do
+      {:ok, path} ->
+        path
+        |> Zipper.zip()
+        |> Zipper.find(fn
+          {embed, meta, _} when embed in @embeds ->
+            Keyword.has_key?(meta, :do)
+
+          _ ->
+            false
+        end)
+        |> then(&match?(%Zipper{}, &1))
     end
   end
 

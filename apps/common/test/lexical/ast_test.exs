@@ -46,7 +46,7 @@ defmodule Lexical.AstTest do
 
     test "returns [] when can't parse the AST" do
       text = ~q[
-        foo(bar do baz, bat|
+        foo(bar do baz, [bat|
       ]
 
       path = cursor_path(text)
@@ -211,7 +211,7 @@ defmodule Lexical.AstTest do
     setup do
       {range, code} = pop_range(~q|
         [
-          «single_line_call(1, 2, 3»)
+          «single_line_call(1, 2, 3)»
         ]
       |)
 
@@ -247,7 +247,7 @@ defmodule Lexical.AstTest do
         [
           «multi_line_call(
             1, 2, 3
-          »)
+          )»
         ]
       |)
 
